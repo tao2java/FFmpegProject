@@ -19,7 +19,7 @@
     
     AVCaptureSession* avCaptureSession;
     AVCaptureDevice *avCaptureDevice;
-    int producerFps;
+//    int producerFps;
 }
 
 @property (nonatomic, retain) AVCaptureSession *avCaptureSession;

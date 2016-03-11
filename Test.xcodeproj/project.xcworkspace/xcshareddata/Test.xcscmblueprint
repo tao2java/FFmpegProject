@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "59FF9F1B0BAEB43925E2D5CEE3018FC540D4D81F",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "59FF9F1B0BAEB43925E2D5CEE3018FC540D4D81F" : 0,
+    "8CEE2920F82777E0800DD1AD4CACD1E31E585E07" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "EE2A5C45-A730-4D0D-BDE3-33837BDF4785",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "59FF9F1B0BAEB43925E2D5CEE3018FC540D4D81F" : "FFmpegProject\/",
+    "8CEE2920F82777E0800DD1AD4CACD1E31E585E07" : "..\/ffmpegTookit\/ffmpeg-3.0"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "Test",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "Test.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/devkiang\/FFmpegProject.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "59FF9F1B0BAEB43925E2D5CEE3018FC540D4D81F"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "git:\/\/source.ffmpeg.org\/ffmpeg.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "8CEE2920F82777E0800DD1AD4CACD1E31E585E07"
+    }
+  ]
+}

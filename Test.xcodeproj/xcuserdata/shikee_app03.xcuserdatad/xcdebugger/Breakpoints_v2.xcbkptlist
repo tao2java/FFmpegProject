@@ -10,11 +10,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "Test/CaptureData.m"
-            timestampString = "478511344.395685"
+            timestampString = "479351832.315341"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "194"
-            endingLineNumber = "194"
+            startingLineNumber = "167"
+            endingLineNumber = "167"
             landmarkName = "-startVideoCapture"
             landmarkType = "5">
          </BreakpointContent>
@@ -26,29 +26,23 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "Test/CaptureData.m"
-            timestampString = "478511344.395685"
+            timestampString = "479351180.324877"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "156"
-            endingLineNumber = "156"
+            startingLineNumber = "121"
+            endingLineNumber = "121"
             landmarkName = "-startVideoCapture"
             landmarkType = "5">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         BreakpointExtensionID = "Xcode.Breakpoint.ExceptionBreakpoint">
          <BreakpointContent
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "Test/CaptureData.m"
-            timestampString = "478511344.395685"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "397"
-            endingLineNumber = "397"
-            landmarkName = "-convertToFFMpegFrame:"
-            landmarkType = "5">
+            scope = "0"
+            stopOnStyle = "0">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

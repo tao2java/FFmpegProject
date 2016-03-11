@@ -7,15 +7,12 @@
 //
 
 #import "CaptureData.h"
-#import "avcodec.h"
-#import "swscale.h"
-#import "imgutils.h"
-#import "avformat.h"
-#import "opt.h"
+#import "CoreService.h"
 
 @interface CaptureData ()
 {
-    
+    CoreService *service;
+    AVCaptureConnection             *videoCaptureConnection;
 }
 @property(nonatomic,strong) NSMutableArray *dataArray;
 
@@ -23,12 +20,6 @@
 
 @implementation CaptureData
 {
-    long _lastTime;
-    int fps;
-    NSArray *datas;
-    AVCodecContext *context;
-    AVCodec *codec;
-    NSInteger timestamp;
 }
 
 
@@ -39,40 +30,14 @@
 
 -(void)dealloc
 {
-    avcodec_close(context);
-    av_free(context);
+   
 }
 
 -(id)init
 {
     if(self= [super init])
     {
-        producerFps= 30;
-        timestamp=0;
-        avcodec_register_all();
-        codec=avcodec_find_encoder(AV_CODEC_ID_H264);
-        if (!codec) {
-            fprintf(stderr, "h264 codec not found\n");
-            exit(1);
-        }
-        context= avcodec_alloc_context3(codec);
-        context->bit_rate = 240000;
-        context->width = 352;//width;//352;
-        context->height = 288;//height;//288;
-        context->time_base= (AVRational){1,25};
-        context->gop_size = 10;
-        context->max_b_frames=1;
-        context->pix_fmt = AV_PIX_FMT_YUV420P;
-        context->thread_count = 1;
-        AVDictionary * codec_options=NULL;
-        av_dict_set( &codec_options, "preset", "superfast", 0 );
-        av_dict_set(&codec_options, "tune", "zerolatency", 0);
-        if (avcodec_open2(context, codec,&codec_options) < 0) {
-            fprintf(stderr, "could not open codec\n");
-            exit(1);
-        }
-
-        
+        service=[CoreService new];
     }
     return self;
 }
@@ -175,19 +140,27 @@
     // On iPhone 3G, the recommended pixel format choices are kCVPixelFormatType_422YpCbCr8 or kCVPixelFormatType_32BGRA.
     //
     AVCaptureVideoDataOutput *avCaptureVideoDataOutput = [[AVCaptureVideoDataOutput alloc] init];
-    NSDictionary*settings = [NSDictionary dictionaryWithObject:
-                             [NSNumber numberWithInt:kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange]
-                                                        forKey:(id)kCVPixelBufferPixelFormatTypeKey];
+//    NSDictionary*settings = [NSDictionary dictionaryWithObject:
+//                             [NSNumber numberWithInt:kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange]
+//                                                        forKey:(id)kCVPixelBufferPixelFormatTypeKey];
+    NSDictionary *settings = [[NSDictionary alloc] initWithObjectsAndKeys:
+                              [NSNumber numberWithUnsignedInt:kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange],
+                              kCVPixelBufferPixelFormatTypeKey,
+                              nil]; // X264_CSP_NV12
     
-//    [self->avCaptureDevice setActiveVideoMinFrameDuration:CMTimeMake(1, self->producerFps)];
+//    [self->avCaptureDevice setActiveVideoMinFrameDuration:CMTimeMake(1, 25)];
     avCaptureVideoDataOutput.videoSettings = settings;
+    avCaptureVideoDataOutput.alwaysDiscardsLateVideoFrames = YES;
 //    [avCaptureDevice setActiveVideoMinFrameDuration:CMTimeMake(1, self->producerFps)];
-    avCaptureVideoDataOutput.minFrameDuration = CMTimeMake(1, self->producerFps);
+    avCaptureVideoDataOutput.minFrameDuration = CMTimeMake(1, 25);
     /*创建一个并行队列绑定到帧数进程上去*/
     dispatch_queue_t queue = dispatch_queue_create("com.bigkiang.shangjiang", NULL);
     [avCaptureVideoDataOutput setSampleBufferDelegate:self queue:queue];
     [self->avCaptureSession addOutput:avCaptureVideoDataOutput];
-    
+    // 保存Connection，用于在SampleBufferDelegate中判断数据来源（是Video/Audio？）
+//    if(videoCaptureConnection==nil){
+        videoCaptureConnection = [avCaptureVideoDataOutput connectionWithMediaType:AVMediaTypeVideo];
+//    }
     //视频捕捉预览
     AVCaptureVideoPreviewLayer* previewLayer = [AVCaptureVideoPreviewLayer layerWithSession: self->avCaptureSession];
     previewLayer.frame = localView.bounds;
@@ -203,6 +176,7 @@
 - (void)stopVideoCapture:(id)arg
 {
     //停止摄像头捕抓
+    
     if(self->avCaptureSession){
         [self->avCaptureSession stopRunning];
         self->avCaptureSession= nil;
@@ -213,23 +187,32 @@
     for(UIView*view in self->localView.subviews) {
         [view removeFromSuperview];
     }
+    videoCaptureConnection=nil;
+    [service freeX264Resource];
 }
 
 #pragma mark AVCaptureVideoDataOutputSampleBufferDelegate
 - (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection
 {
     //捕捉数据输出 要怎么处理虽你便
-    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+//    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     
     /*帧数处理*/
     //锁定顶点缓冲区
     //是为了防止程序在向顶点缓冲区中写入顶点数据或修改缓冲区中顶点数据时，显示卡不等待程序输入或修改完毕便直接将这些尚未完成的数据显示到屏幕中的问题（显示卡硬件刷新的速度很多时候会快于程序刷写顶点缓存的速度，也就是说当程序还未完成顶点数据写入时，显卡硬件可能早已经完成了前一帧画面的输出，又回过头来重复操作了），这样会造成图像输出错误等。
     //see http://zhidao.baidu.com/link?url=8vMlKBs5CzQgaIsqzxWeB3crWqdlYIvyEjNElonB9bK48zTNVE3LonDyFhtM_b3DhbzRfponadhGAW7CyC9DsrjMWHtzLUNQbiatnfVViLy
-    if(CVPixelBufferLockBaseAddress(pixelBuffer, 0) == kCVReturnSuccess)
-    {
+//    if(CVPixelBufferLockBaseAddress(pixelBuffer, 0) == kCVReturnSuccess)
+//    {
+    // 这里的sampleBuffer就是采集到的数据了，但它是Video还是Audio的数据，得根据connection来判断
+    if (connection == videoCaptureConnection) {
+        
         [self encodeH264:sampleBuffer];
-        CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+        
     }
+    
+
+//        CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+//    }
 }
 
 #pragma mark - Private Method
@@ -241,124 +224,14 @@
  */
 -(void)encodeH264:(CMSampleBufferRef)sampleBuffer
 {
-
-    CVImageBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-    // 访问数据
-    int width = (int)CVPixelBufferGetWidth(pixelBuffer);
-    int height = (int)CVPixelBufferGetHeight(pixelBuffer);
-    int pixelFormat = CVPixelBufferGetPixelFormatType(pixelBuffer);
-    enum AVPixelFormat pix_fmt;
-    if (pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)
-    {
-        pix_fmt = AV_PIX_FMT_NV12;
-    }
-    else
-    {
-        pix_fmt = AV_PIX_FMT_BGR32;
-    }
-    
-    AVFrame *pFrame=av_frame_alloc();
-    pFrame->quality = 0;
-    unsigned char *rawPixelBase = (unsigned char *)CVPixelBufferGetBaseAddress(pixelBuffer);
-    av_image_fill_arrays(pFrame->data, pFrame->linesize, rawPixelBase, pix_fmt, width, height, 1);
-    AVFrame* outFrame = av_frame_alloc();
-    int  out_size, size, outbuf_size;
-    uint8_t *outbuf;
-    outbuf_size = 100000;
-    outbuf = (uint8_t *)malloc(outbuf_size);
-    size = context->width * context->height;
-    AVPacket avpkt;//是存储压缩编码数据相关信息的结构体 data：压缩编码的数据。
-//   int nbytes=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, context->width, context->height, 1);
-    int nbytes = avpicture_get_size(AV_PIX_FMT_YUV420P, context->width, context->height);
-    uint8_t* outbuffer = (uint8_t*)av_malloc(nbytes);
-    fflush(stdout);
-    avpicture_fill((AVPicture*)outFrame, outbuffer, AV_PIX_FMT_YUV420P, context->width, context->height);
-//    av_image_fill_arrays(outFrame->data, outFrame->linesize, outbuffer, AV_PIX_FMT_YUV420P, width, height, 1);
-    struct SwsContext* fooContext = sws_getContext(width, height,
-                                                   pix_fmt,
-                                                   context->width, context->height,
-                                                   AV_PIX_FMT_YUV420P,
-                                                   SWS_POINT, NULL, NULL, NULL);
-//    pFrame->data[0]  += pFrame->linesize[0] * (height - 1);
-//    pFrame->linesize[0] *= -1;
-//    pFrame->data[1]  += pFrame->linesize[1] * (height / 2 - 1);
-//    pFrame->linesize[1] *= -1;
-//    pFrame->data[2]  += pFrame->linesize[2] * (height / 2 - 1);
-//    pFrame->linesize[2] *= -1;
-    
-    sws_scale(fooContext,(const uint8_t**)pFrame->data, pFrame->linesize, 0, height, outFrame->data, outFrame->linesize);
-    // Here is where I try to convert to YUV
-//    NSLog(@"xxxxx=====%d",xx);
-    
-    /* encode the image */
-    int got_packet_ptr = 0;
-    av_init_packet(&avpkt);
-    avpkt.size = outbuf_size;
-    avpkt.data = outbuf;
-    outFrame->pts=timestamp;
-    timestamp++;
-    out_size = avcodec_encode_video2(context, &avpkt, outFrame, &got_packet_ptr);
-
-    
-//    printf("encoding frame (size=%5d)\n", out_size);
-    printf("encoding frame %s\n", avpkt.data);
-//    AVFormatContext *outFormatContext=avformat_alloc_context();
-//    avp
-    
-    
-//    NSLog(@"code end");
-    
-//    av_free(pFrame);
-//    av_free(outFrame);
-    av_frame_free(&pFrame);
-    av_frame_free(&outFrame);
-    av_packet_unref(&avpkt);
-    sws_freeContext(fooContext);
-    free(outbuf);
-    free(outbuffer);
+    [service encoderToH264:sampleBuffer];
 }
 
-
-
-
-/**
- CMSampleBufferRef 转换为NSData数据
- 提示：此方法不提供缓冲地址锁定
- */
--(NSData*)imageToBuffer:(CMSampleBufferRef)source
-{
-    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(source);
-    
-    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
-//    size_t width = CVPixelBufferGetWidth(imageBuffer);
-    size_t height = CVPixelBufferGetHeight(imageBuffer);
-    void *src_buff = CVPixelBufferGetBaseAddress(imageBuffer);
-    NSData *data = [NSData dataWithBytes:src_buff length:bytesPerRow * height];
-    return data;
-}
-
-/**
- CMSampleBufferRef 转换为FFMPEG的AVFrame数据
- 提示：此方法不提供缓冲地址锁定
- */
--(AVFrame *)convertToFFMpegFrame:(CMSampleBufferRef)source
-{
-    CVImageBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(source);
-    // 访问数据
-    int width = CVPixelBufferGetWidth(pixelBuffer);
-    int height = CVPixelBufferGetHeight(pixelBuffer);
-    unsigned char *rawPixelBase = (unsigned char *)CVPixelBufferGetBaseAddress(pixelBuffer);
-    
-    AVFrame *pFrame;
-    pFrame = av_frame_alloc();
-    int errorCode=avpicture_fill((AVPicture*)pFrame, rawPixelBase, AV_PIX_FMT_NV12, width, height);
-    return pFrame;
-}
 
 
 -(NSDateComponents *)getNowTimeModel
 {
-    NSCalendar *calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];//1 对于被autorelease的对象，Leak工具也会视其为泄露，自己知道没问题就行。
+    NSCalendar *calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
     NSDate *now;
     NSDateComponents *comps;
     NSInteger unitFlags = NSYearCalendarUnit | NSMonthCalendarUnit | NSDayCalendarUnit | NSWeekdayCalendarUnit |
@@ -366,15 +239,5 @@
     now=[NSDate date];
     comps = [calendar components:unitFlags fromDate:now];
     return comps ;
-}
-
-#pragma mark - InitVar
--(NSMutableArray *)dataArray
-{
-    if(!_dataArray)
-    {
-        _dataArray=[[NSMutableArray alloc]init];
-    }
-    return _dataArray;
 }
 @end

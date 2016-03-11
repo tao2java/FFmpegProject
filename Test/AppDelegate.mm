@@ -9,6 +9,7 @@
 #import "AppDelegate.h"
 #import "avformat.h"
 #import "CaptureData.h"
+#import "MainViewController.h"
 
 @interface AppDelegate ()
             
@@ -21,6 +22,7 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     self.window = [[UIWindow alloc]initWithFrame:[[UIScreen mainScreen] bounds]];
     [self.window makeKeyAndVisible];
+//    MainViewController *mainCtrl=[[MainViewController alloc]init];
     CaptureData* homeVc = [[CaptureData alloc]init];
     //    DemoViewController *homeVc = [[DemoViewController alloc]init];
     
